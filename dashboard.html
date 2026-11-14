@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>حسابي | أنت أهم عندنا</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@400;600&display=swap">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="wide">
+    <div class="bar">
+      <div class="who"><strong id="hello"></strong> <span class="badge" id="role"></span></div>
+      <button id="logout">تسجيل الخروج</button>
+    </div>
+
+    <section id="welcome" hidden>
+      <p id="welcome-text"></p>
+      <button class="primary" id="make-account" style="width:auto" hidden>إنشاء حساب</button>
+    </section>
+
+    <section id="staff" hidden>
+      <h2>إدارة المستخدمين</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>الاسم</th><th>البريد / المستخدم</th><th>طريقة الدخول</th><th>الصلاحية</th><th>الحالة</th><th></th></tr></thead>
+          <tbody id="users"></tbody>
+        </table>
+      </div>
+      <p class="empty" id="empty" hidden>لا يوجد مستخدمون بعد. سيظهر هنا كل من ينشئ حساباً.</p>
+    </section>
+  </main>
+
+  <script src="auth.js"></script>
+  <script>
+    const $ = id => document.getElementById(id);
+    const el = (tag, text, cls) => { const e = document.createElement(tag); if (text != null) e.textContent = text; if (cls) e.className = cls; return e; };
+    const ROLE = { user: 'مستخدم', teacher: 'معلم VIP', guest: 'ضيف' };
+
+    const leave = () => { logout(); location.replace('login.html'); };
+    $('logout').onclick = leave;
+
+    const me = currentUser();
+    if (!me || me.suspended) {
+      leave();
+    } else {
+      $('hello').textContent = me.name;
+      $('role').textContent = ROLE[me.role];
+      if (me.role === 'teacher') {
+        $('staff').hidden = false;
+        render();
+      } else {
+        $('welcome').hidden = false;
+        $('welcome-text').textContent = me.role === 'guest'
+          ? 'أنت تتصفح كضيف. أنشئ حساباً لتحتفظ ببياناتك.'
+          : 'تم تسجيل دخولك بنجاح.';
+        if (me.role === 'guest') { $('make-account').hidden = false; $('make-account').onclick = leave; }
+      }
+    }
+
+    function actionButton(label, fn, cls) {
+      const b = el('button', label, cls);
+      b.onclick = fn;
+      return b;
+    }
+
+    function render() {
+      const users = getUsers();
+      const body = $('users');
+      body.replaceChildren();
+      for (const u of users) {
+        const tr = el('tr');
+        const actions = el('td', null, 'actions');
+        if (u.role === 'user') {
+          actions.append(
+            actionButton(u.suspended ? 'إلغاء الإيقاف' : 'إيقاف', () => { setSuspended(u.id, !u.suspended); render(); }),
+            actionButton('حذف', () => { if (confirm('حذف ' + u.name + '؟')) { deleteUser(u.id); render(); } }, 'danger')
+          );
+        }
+        const status = el('td');
+        status.append(el('span', u.suspended ? 'موقوف' : 'نشط', 'pill ' + (u.suspended ? 'off' : 'ok')));
+        tr.append(el('td', u.name), el('td', u.email), el('td', u.provider === 'email' ? 'بريد' : u.provider),
+          el('td', ROLE[u.role]), status, actions);
+        body.append(tr);
+      }
+      $('empty').hidden = users.some(u => u.role === 'user');
+    }
+  </script>
+</body>
+</html>
